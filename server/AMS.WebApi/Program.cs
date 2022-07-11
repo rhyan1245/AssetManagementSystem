@@ -21,6 +21,7 @@ namespace AMS.WebApi
       {
         var services = scope.ServiceProvider;
 
+        AssetDataGenerator.GenerateUsers(services);
         AssetDataGenerator.Generate(services);
       }
 

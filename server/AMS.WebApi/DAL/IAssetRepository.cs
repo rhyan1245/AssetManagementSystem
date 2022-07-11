@@ -7,12 +7,11 @@ namespace AMS.WebApi.DAL
 {
   public interface IAssetRepository : IDisposable
   {
-    IEnumerable<Asset> GetAssets();
-    Task<IEnumerable<Asset>> GetAssetsAsync();
-    Asset GetAssetById(int id);
-    Task<Asset> GetAssetByIdAsync(int id);
+    IEnumerable<Asset> GetAssets(string userId);
+    Task<IEnumerable<Asset>> GetAssetsAsync(string userId);
+    Asset GetAssetById(int id, string userId);
+    Task<Asset> GetAssetByIdAsync(int id, string userId);
     void AddAsset(Asset asset);
-    void DeleteAsset(int id);
     void DeleteAsset(Asset asset);
     void UpdateAsset(Asset asset);
     void Save();
