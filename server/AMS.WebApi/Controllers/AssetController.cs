@@ -1,29 +1,36 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Security.Claims;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Threading.Tasks;
 using AMS.WebApi.DAL;
 using AMS.WebApi.Helpers;
 using AMS.WebApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace AMS.WebApi.Controllers
 {
   [ApiController]
   [Route("[controller]")]
+  [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
   public class AssetController : ControllerBase
   {
     private IAssetRepository _assetRepository;
-    public AssetController(IAssetRepository assetRepository)
+    private readonly UserManager<IdentityUser> _userManager;
+    public AssetController(IAssetRepository assetRepository, UserManager<IdentityUser> userManager)
     {
       _assetRepository = assetRepository;
+      _userManager = userManager;
     }
 
     [HttpGet("list")]
     public async Task<ActionResult<IEnumerable<Asset>>> GetAssets()
     {
-      var assets = await _assetRepository.GetAssetsAsync();
+      string userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+      var assets = await _assetRepository.GetAssetsAsync(userId);
 
       return Ok(assets);
     }
@@ -31,7 +38,8 @@ namespace AMS.WebApi.Controllers
     [HttpGet("{id}")]
     public async Task<ActionResult<Asset>> GetAsset(int id)
     {
-      var asset = await _assetRepository.GetAssetByIdAsync(id);
+      string userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+      var asset = await _assetRepository.GetAssetByIdAsync(id, userId);
 
       if (asset == null)
       {
@@ -44,6 +52,8 @@ namespace AMS.WebApi.Controllers
     [HttpPost]
     public async Task<ActionResult<Asset>> CreateAsset(Asset asset)
     {
+      var user = await _userManager.GetUserAsync(User);
+      asset.User = user;
       _assetRepository.AddAsset(asset);
       await _assetRepository.SaveAsync();
 
@@ -58,7 +68,8 @@ namespace AMS.WebApi.Controllers
         return BadRequest();
       }
 
-      var orgAsset = await _assetRepository.GetAssetByIdAsync(id);
+      string userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+      var orgAsset = await _assetRepository.GetAssetByIdAsync(id, userId);
 
       if (orgAsset == null)
       {
@@ -91,13 +102,14 @@ namespace AMS.WebApi.Controllers
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAsset(int id)
     {
-      var asset = await _assetRepository.GetAssetByIdAsync(id);
+      string userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+      var asset = await _assetRepository.GetAssetByIdAsync(id, userId);
       if (asset == null)
       {
         return NotFound();
       }
 
-      _assetRepository.DeleteAsset(id);
+      _assetRepository.DeleteAsset(asset);
       await _assetRepository.SaveAsync();
 
       return NoContent();

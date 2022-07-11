@@ -1,18 +1,19 @@
+using System.Text;
 using System;
-using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using System.Threading.Tasks;
-using AMS.WebApi.DAL;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using AMS.WebApi.DAL;
 
 namespace AMS.WebApi
 {
@@ -30,8 +31,9 @@ namespace AMS.WebApi
     {
       var connStr = Configuration.GetConnectionString("DefaultConnection");
       var serverVersion = new MySqlServerVersion(new Version(8, 0, 27));
+      var migrationAssembly = typeof(Program).Assembly.GetName().Name;
       services.AddDbContext<AppDbContext>(options =>
-        options.UseMySql(connStr, serverVersion)
+        options.UseMySql(connStr, serverVersion, opt => opt.MigrationsAssembly(migrationAssembly))
         .LogTo(Console.WriteLine, LogLevel.Information)
         .EnableSensitiveDataLogging()
         .EnableDetailedErrors());
@@ -39,6 +41,32 @@ namespace AMS.WebApi
       services.AddScoped<IAssetRepository, AssetRepository>();
 
       services.AddControllers();
+      services.AddAuthentication(options =>
+      {
+        // authenticate using jwt
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+      })
+      .AddJwtBearer(jwt =>
+      {
+        var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
+        jwt.SaveToken = true;
+        jwt.TokenValidationParameters = new TokenValidationParameters
+        {
+          // validate token against secret
+          ValidateIssuerSigningKey = true,
+          IssuerSigningKey = new SymmetricSecurityKey(key),
+          ValidateIssuer = false,
+          ValidateAudience = false,
+          RequireExpirationTime = false,
+          ValidateLifetime = true
+        };
+      });
+
+      services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
+        .AddEntityFrameworkStores<AppDbContext>();
+
       services.AddSwaggerGen(c =>
       {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "AMS.WebApi", Version = "v1" });
@@ -58,7 +86,7 @@ namespace AMS.WebApi
       app.UseHttpsRedirection();
 
       app.UseRouting();
-
+      app.UseAuthentication();
       app.UseAuthorization();
 
       app.UseEndpoints(endpoints =>

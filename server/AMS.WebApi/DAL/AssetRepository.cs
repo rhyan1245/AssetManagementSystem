@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AMS.WebApi.Extensions;
 using AMS.WebApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,35 +23,29 @@ namespace AMS.WebApi.DAL
       _context.Assets.Add(asset);
     }
 
-    public void DeleteAsset(int id)
-    {
-      Asset asset = GetAssetById(id);
-      DeleteAsset(asset);
-    }
-
     public void DeleteAsset(Asset asset)
     {
       _context.Assets.Remove(asset);
     }
 
-    public Asset GetAssetById(int id)
+    public Asset GetAssetById(int id, string userId)
     {
-      return _context.Assets.Find(id);
+      return _context.Assets.Include(c => c.User).ForUser(userId).FirstOrDefault(c => c.Id == id);
     }
 
-    public async Task<Asset> GetAssetByIdAsync(int id)
+    public async Task<Asset> GetAssetByIdAsync(int id, string userId)
     {
-      return await _context.Assets.FindAsync(id);
+      return await _context.Assets.Include(c => c.User).ForUser(userId).FirstOrDefaultAsync(c => c.Id == id);
     }
 
-    public IEnumerable<Asset> GetAssets()
+    public IEnumerable<Asset> GetAssets(string userId)
     {
-      return _context.Assets.ToList();
+      return _context.Assets.Include(c => c.User).ForUser(userId).ToList();
     }
 
-    public async Task<IEnumerable<Asset>> GetAssetsAsync()
+    public async Task<IEnumerable<Asset>> GetAssetsAsync(string userId)
     {
-      return await _context.Assets.ToListAsync();
+      return await _context.Assets.Include(c => c.User).ForUser(userId).ToListAsync();
     }
 
     public void Save()

@@ -1,12 +1,13 @@
-using Microsoft.EntityFrameworkCore;
 using AMS.WebApi.Models;
 using AMS.WebApi.Models.EnumTypes;
 using System;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace AMS.WebApi
 {
-  public class AppDbContext : DbContext
+  public class AppDbContext : IdentityDbContext<IdentityUser>
   {
     public DbSet<Asset> Assets => Set<Asset>();
 
@@ -25,6 +26,7 @@ namespace AMS.WebApi
         entity.Property(e => e.Name).IsRequired();
         entity.Property(e => e.Type)
         .HasConversion(v => v.ToString(), v => (AssetType)Enum.Parse(typeof(AssetType), v));
+        entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
       });
     }
   }
